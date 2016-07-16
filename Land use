@@ -1,0 +1,28 @@
+def categoryGrade(values):
+    water = []
+    shrubland = []
+    grass =[]
+    crop = []
+    wood = []
+    other = []
+    x = []
+    for i in values:
+        if i == 210:
+            water.append(i)
+        elif i == 14:
+            grass.append(i)
+        elif i == 20 or i == 30:
+            shrubland.append(i)
+        elif i == 11:
+            crop.append(i)
+        elif i == 140:
+            wood.append(i)
+        else:
+            other.append(i)
+    x.append(float(len(water)))
+    x.append(float(len(grass)))
+    x.append(float(len(shrubland)))
+    x.append(float(len(crop)))
+    x.append(float(len(wood)))
+    x.append(float(len(other)))
+    return x
