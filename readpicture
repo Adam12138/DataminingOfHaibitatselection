@@ -2,11 +2,8 @@ __author__ = 'Adam'
 
 '''
 read lati and longi from land
-read from waterdistance and landuse based on lati and longi
-if x=14 && distance<2km
-    make it red
-    else
-    continue
+read from waterdistance and landuse and NDVI based on lati and longi
+
 '''
 
 import MySQLdb
