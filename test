@@ -1,0 +1,41 @@
+__author__ = 'Adam'
+
+
+'''
+list1 = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+f = open('demo3.txt', 'w')
+for i in list1:
+    k = ' '.join([str(j)for j in i])
+    f.write(k + "\n")
+f.close()
+'''
+list2 = []
+label = []
+testlabel = []
+fr = open('demo12.txt')
+for j in fr.readlines():
+    line1 = j.strip().split()
+    list2.append([line1[0], line1[1], line1[2], line1[3], line1[4], line1[5], line1[6], line1[7]])
+    label.append(float(line1[8]))
+print list2[0:20]
+
+for k in list2:
+    re = -68.0 - 111.0 * float(k[0]) - 13.5 * float(k[1]) - 8.6 * float(k[2]) - 10.4 * float(k[3]) \
+         - 3.5 * float(k[4]) - 12.72 * float(k[5]) - 14.2 * float(k[6]) + 164.0 * float(k[7])
+    if re > 0:
+        testlabel.append(float(1))
+    else:
+        testlabel.append(float(0))
+
+n = len(label)
+m = len(testlabel)
+print m, n
+print label
+print testlabel
+p = 0
+for i in range(0, 966):
+    if label[i] == testlabel[i]:
+        p += 1
+    if i == 965:
+        print 'accuracy: ', float(p)/float(n)
+
