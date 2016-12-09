@@ -1,0 +1,355 @@
+__author__ = 'Adam'
+/*
+
+get positive samples and negtive 
+samples from trajectory datas,
+and write them to txt files
+
+*/
+
+
+
+import MySQLdb
+from pylab import *
+from osgeo import gdal
+import sys
+from PIL import Image
+import random
+import scipy.stats as st
+
+
+def connectDB():
+    conn = MySQLdb.connect(
+        host="127.0.0.1",
+        port=3306,
+        user="root",
+        passwd="123456",
+        db="birdgps"
+    )
+    cur = conn.cursor()
+    cur.execute("select latitude from sdview1 ")#where ptt = {} ".format(category))
+    x = cur.fetchall()
+    cur.execute("select longitude from sdview1 ")#where ptt = {} ".format(category))
+    y = cur.fetchall()
+    cur.close()
+    conn.commit()
+    conn.close()
+    return x, y
+
+
+def transfer(x, y):
+    latitude = []
+    longitude = []
+    for a in x:
+        latitude.append(a[0])
+    print 'latitudes: ', latitude
+    for b in y:
+        longitude.append(b[0])
+    print 'longitudes: ', longitude
+    return (latitude, longitude)
+
+
+def geoTransform(srcImage, latitude, longitude):
+    geoTrans = srcImage.GetGeoTransform()
+    ulX = geoTrans[0]
+    ulY = geoTrans[3]
+    xDist = geoTrans[1]
+    yDist = geoTrans[5]
+    band = srcImage.GetRasterBand(1)
+    s = float(ulX)
+    t = float(ulY)
+    print 'Longitude of up left pixel: ', s
+    print 'Latitude of up left pixel: ', t
+    p = float(xDist)
+    q = float(yDist)
+    pixlati = []
+    pixlongi = []
+    for m in latitude:
+        nums1 = float((m - ulY) / yDist)
+        pixlati.append(nums1)
+    length = len(pixlati)
+    print 'Number of points: ', length
+    minlati = int(min(pixlati))
+    maxlati = int(max(pixlati))
+    print 'Scope of latitude: ', minlati, '-', maxlati
+    for n in longitude:
+        nums2 = float((n - ulX) / xDist)
+        pixlongi.append(nums2)
+    minlongi = int(min(pixlongi))
+    maxlongi = int(max(pixlongi))
+    print 'Scope of longitude: ', minlongi, '-', maxlongi
+    return length, pixlati, pixlongi, band, minlati, maxlati, minlongi, maxlongi
+
+
+def getValue(m, pixlati, pixlongi, band):
+    i = 0
+    values = []
+    while i < m:
+        p = int(pixlati[i])
+        q = int(pixlongi[i])
+        data = band.ReadAsArray(q, p, 1, 1)
+        value = data[0, 0]
+        values.append(value)
+        i += 1
+    print values
+    return values
+
+
+def show1(p, q):
+    plot(p, q, 'r*')
+    #plot(p[:], q[:])
+    title('Plotting:"water"')
+    show()
+
+
+def categoryGrade1(values):
+    grade02 = []
+    grade24 = []
+    grade46 = []
+    grade6u = []
+    x = []
+    for i in values:
+        if i <= 2000.0:
+            grade02.append(i)
+        elif 2000.0 < i <= 4000.0:
+            grade24.append(i)
+        elif 4000.0 < i <= 6000.0:
+            grade46.append(i)
+        else:
+            grade6u.append(i)
+    x.append(float(len(grade02)))
+    x.append(float(len(grade24)))
+    x.append(float(len(grade46)))
+    x.append(float(len(grade6u)))
+    return x
+
+
+def categoryGrade2(values):
+    water = []
+    shrubland = []
+    grass =[]
+    crop = []
+    wood = []
+    other = []
+    x = []
+    for i in values:
+        if i == 210:
+            water.append(210.0)
+        elif i == 14:
+            grass.append(14.0)
+        elif i == 20:
+            shrubland.append(20.0)
+        elif i == 11:
+            crop.append(11.0)
+        elif i == 140:
+            wood.append(140.0)
+        else:
+            other.append(float(i))
+    x.append(float(len(water)))
+    x.append(float(len(grass)))
+    x.append(float(len(shrubland)))
+    x.append(float(len(crop)))
+    x.append(float(len(wood)))
+    x.append(float(len(other)))
+    return x
+
+
+def categoryGrade3(values):
+    grade02 = []
+    grade24 = []
+    grade46 = []
+    grade6u = []
+    x = []
+    for i in values:
+        if i < -0.5:
+            grade02.append(i)
+        elif -0.5 <= i <= 0:
+            grade24.append(i)
+        elif 0 < i <= 0.5:
+            grade46.append(i)
+        elif 0.5 < i <= 1:
+            grade6u.append(i)
+    x.append(float(len(grade02)))
+    x.append(float(len(grade24)))
+    x.append(float(len(grade46)))
+    x.append(float(len(grade6u)))
+    return x
+
+
+def main(raster_path1, raster_path2, raster_path3):
+    srcImage1 = gdal.Open(raster_path1)
+    if srcImage1  is None:
+        print 'Could not find the RasterData'
+        sys.exit(1)
+    #land = array(Image.open(raster_path2))
+    #imshow(land)
+    print '                '
+    x, y = connectDB()
+    latitude, longitude = transfer(x, y)
+    print '                 '
+    print '----------------'
+    m1, pixlati1, pixlongi1, band1, minlati1, maxlati1, minlongi1, maxlongi1 = geoTransform(srcImage1, latitude, longitude)
+    print '                 '
+    print '----------------'
+    srcImage2 = gdal.Open(raster_path2)
+    if srcImage2 is None:
+        print 'Could not find the RasterData'
+        sys.exit(1)
+    m2, pixlati2, pixlongi2, band2, minlati2, maxlati2, minlongi2, maxlongi2 = geoTransform(srcImage2, latitude, longitude)
+    print '                 '
+    print '----------------'
+    srcImage3 = gdal.Open(raster_path3)
+    if srcImage3 is None:
+        print 'Could not find the RasterData'
+        sys.exit(1)
+    m3, pixlati3, pixlongi3, band3, minlati3, maxlati3, minlongi3, maxlongi3 = geoTransform(srcImage3, latitude, longitude)
+    print '                 '
+
+
+
+    print 'The distance to water of each real point: '
+    value1 = getValue(m1, pixlati1, pixlongi1, band1)
+    value2 = getValue(m2, pixlati2, pixlongi2, band2)
+    value3 = getValue(m3, pixlati3, pixlongi3, band3)
+    values1 = []
+    values2 = []
+    values3 = []
+    values4 = []
+    values5 = []
+    values6 = []
+    values7 = []
+    values8 = []
+
+    for i in value1:
+        if i >8000:
+            values1.append(1.0)
+        else:
+            i /= 8000
+            values1.append('%-8.7f' % i)
+    for j in value2:
+        if j == 210:
+            #values2.append('%-7.4f' % random.uniform(2.0, 2.9999))
+            values2.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+
+        elif j == 14:
+            #values2.append('%-7.4f' % random.uniform(1.0, 1.9999))
+            values3.append(1.0)
+            values2.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+        elif j == 20:
+            #values2.append('%-7.4f' % random.uniform(0.75, 0.9999))
+            values4.append(1.0)
+            values3.append(0.0)
+            values2.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+        elif j == 11:
+            #values2.append('%-7.4f' % random.uniform(0.3, 0.7999))
+            values5.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values2.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+        elif j == 140:
+            #values2.append('%-7.4f' % random.uniform(0.2, 0.3499))
+            values6.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values2.append(0.0)
+            values7.append(0.0)
+        else:
+            #values2.append('%-7.4f' % random.uniform(0.0001, 0.1999))
+            values7.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values2.append(0.0)
+    for i in value3:
+        i = (i + 1) / 2
+        values8.append('%-8.7f' % i)
+
+    valuep = []
+    valuen = []
+    valuesp = [] #save positive points
+    valuesn = [] #save negtive points
+    count = []
+    for point in range(0, 3379):
+        if float(float(values1[point])) < 0.125 and float(values8[point]) >= 0.5 and float(values8[point]) <= 0.8:
+            valuep.append(float(values1[point]))
+            valuep.append(float(values2[point]))
+            valuep.append(float(values3[point]))
+            valuep.append(float(values4[point]))
+            valuep.append(float(values5[point]))
+            valuep.append(float(values6[point]))
+            valuep.append(float(values7[point]))
+            valuep.append(float(values8[point]))
+            valuep.append(1)
+            valuesp.append(valuep)
+            valuep = []
+            count.append(point)
+        elif float(float(values1[point])) < 0.25 and float(values3[point]) > 0.5 and float(values8[point]) < 0.5:
+            valuep.append(float(values1[point]))
+            valuep.append(float(values2[point]))
+            valuep.append(float(values3[point]))
+            valuep.append(float(values4[point]))
+            valuep.append(float(values5[point]))
+            valuep.append(float(values6[point]))
+            valuep.append(float(values7[point]))
+            valuep.append(float(values8[point]))
+            valuep.append(1)
+            valuesp.append(valuep)
+            valuep = []
+            count.append(point)
+        else:
+            valuen.append(float(values1[point]))
+            valuen.append(float(values2[point]))
+            valuen.append(float(values3[point]))
+            valuen.append(float(values4[point]))
+            valuen.append(float(values5[point]))
+            valuen.append(float(values6[point]))
+            valuen.append(float(values7[point]))
+            valuen.append(float(values8[point]))
+            valuen.append(0)
+            valuesn.append(valuen)
+            valuen = []
+
+    return valuesp, valuesn, count
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 1:
+        print "[ ERROR ] you must args. the full raster path"
+        sys.exit(1)
+    raster_path = 'C:\Users\Adam\Desktop\land.tif'
+    raster_path1 = 'C:\Users\Adam\Desktop\water.tif'
+    raster_path2 = 'C:\Users\Adam\Desktop\landuse.tif'
+    raster_path3 = 'C:\Users\Adam\Desktop\NDVI07.tif'
+    valuesp, valuesn, count = main(raster_path1, raster_path2, raster_path3)
+    lengthp = len(valuesp)
+    lengthn = len(valuesn)
+    print "length:"
+    print lengthp, lengthn
+    print "*********************************************************"
+    values = []
+    values.extend(valuesp)
+    values.extend(valuesn)
+    values.extend(valuesn)
+    random.shuffle(values)
+    print values[0:100]
+    f = open('demo11.txt', 'w')
+    for i in values:
+        k = ' '.join([str(j)for j in i])
+        f.write(k + "\n")
+    f.close()
