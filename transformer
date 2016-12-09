@@ -1,0 +1,81 @@
+__author__ = 'Adam'
+
+"turn the pix degree to latitude and longitude for extract data"
+
+from pylab import *
+from osgeo import gdal
+import sys
+
+
+def geoTransform(srcImage, latitude, longitude):
+    geoTrans = srcImage.GetGeoTransform()
+    ulX = geoTrans[0]
+    ulY = geoTrans[3]
+    xDist = geoTrans[1]
+    yDist = geoTrans[5]
+
+    s = float(ulX)
+    t = float(ulY)
+    #print 'Longitude of up left pixel: ', s
+    #print 'Latitude of up left pixel: ', t
+    p = float(xDist)
+    q = float(yDist)
+    #print 'width of pixel: ', p
+    #print 'length of pixel: ', q
+    pixlongi = float((float(longitude) - ulX) / xDist)
+    pixlati = float((float(latitude) - ulY) / yDist)
+
+    return pixlongi, pixlati
+
+
+def getValue(longitude, latitude, band):
+    p = int(longitude)
+    q = int(latitude)
+    data = band.ReadAsArray(p, q, 1, 1)
+    value = data[0, 0]
+    #print value
+    return value
+
+
+def readtext():
+    fr1 = open('demo21.txt')
+    x = []
+    for longitude in fr1.readlines():
+        long = longitude.strip()
+        x.append(long)
+    fr2 = open('demo22.txt')
+    y = []
+    for latitude in fr2.readlines():
+        lati = latitude.strip()
+        y.append(lati)
+    return x, y
+
+
+def creattext(m, values):
+    filename = "G:\land\%d.txt" % m
+    fr = open(filename, 'w')
+    for k in values:
+        fr.write(str(k) + "\n")
+
+
+if __name__ == '__main__':
+    pass
+    if len(sys.argv) < 1:
+        print "[ ERROR ] you must args. the full raster path"
+        sys.exit(1)
+
+    raster_path2 = 'C:\Users\Adam\Desktop\landuse.tif'
+    srcImage2 = gdal.Open(raster_path2)
+    band2 = srcImage2.GetRasterBand(1)
+    long, lati = readtext()
+    count = 0
+    for j in lati:
+        pass
+        count += 1
+        values = []
+        for i in long:
+            pass
+            x, y = geoTransform(srcImage2, j, i)
+            value = getValue(x, y, band2)
+            values.append(value)
+        creattext(count, values)
