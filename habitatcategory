@@ -1,0 +1,63 @@
+__author__ = 'Adam'
+"
+对txt数据集进行分类
+"
+from pylab import *
+import sys
+from PIL import Image
+
+
+def readtext(m):
+    values = []
+    filename = "G:\Features\%d.txt" % m
+    fr = open(filename, 'r')
+    for line in fr.readlines():
+        lineArr = line.strip().split()
+        values.append([float(lineArr[0]), float(lineArr[1]), float(lineArr[2]), float(lineArr[3]),
+                        float(lineArr[4]), float(lineArr[5]), float(lineArr[6]), float(lineArr[7])])
+    return values
+
+
+def category():
+    pass
+
+
+def show1(p, q):
+    plot(p, q, 'r.')
+    #plot(p[:], q[:])
+    title('Plotting:"Habitat"')
+    show()
+
+
+if __name__ == '__main__':
+    pass
+    if len(sys.argv) < 1:
+        print "[ ERROR ] you must args. the full raster path"
+        sys.exit(1)
+    raster_path = ('C:\Users\Adam\Desktop\land.tif')
+    land = array(Image.open(raster_path))
+    imshow(land)
+    '''
+    1 read text
+    '''
+    label = []
+    log = []
+    for i in range(1, 4301):
+        values = readtext(i)
+        count = 1
+        for k in values: #2 category
+            re = -68.0 - 111.0 * float(k[0]) - 13.5 * float(k[1]) - 8.6 * float(k[2]) - 10.4 * float(k[3]) \
+                 - 3.5 * float(k[4]) - 12.72 * float(k[5]) - 14.2 * float(k[6]) + 164.0 * float(k[7])
+            if re > 0:
+                #label.append(float(1))#3 get positive group
+                log.append([count, i])#4 put it into a list
+
+            count += 1
+    x = []
+    y = []
+    for key in log:
+        x.append(key[0])
+        y.append(key[1])
+    show1(x, y)
+
+      #5 plot it on the map
