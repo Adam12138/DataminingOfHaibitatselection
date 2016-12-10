@@ -1,0 +1,321 @@
+/**
+  * Created by songyatong on 16/10/12.
+  */
+
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.{LabeledPoint, LassoWithSGD, LinearRegressionWithSGD}
+import org.apache.spark.{SparkConf, SparkContext}
+import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
+
+
+object Linear1 {
+  val conf = new SparkConf()                                     //创建环境变量
+    .setMaster("local")                                              //设置本地化处理
+    .setAppName("LinearRegression ")                               //设定名称
+  val sc = new SparkContext(conf)                                 //创建环境变量实例
+
+  //var ret = ArrayBuffer[(String,LabeledPoint)]()
+  //ret += ((l._20,data))
+  //ret.iterator
+  var abc = ArrayBuffer[(Double)]()
+  var res = ArrayBuffer[(Double)]()
+  var test = ArrayBuffer[(Double)]()
+  for (i<-0 to 17){
+      abc.append(0.0)
+      res.append(0.0)
+  }
+  var abc1 = ArrayBuffer[(Double)]()
+  var res1 = ArrayBuffer[(Double)]()
+  var test1 = ArrayBuffer[(Double)]()
+  for (i<-0 to 17){
+    abc1.append(0.0)
+    res1.append(0.0)
+  }
+  def main(args: Array[String]) {
+    val data = sc.textFile("/Users/songyatong/Downloads/lassotrain.txt") //get the data path
+    val parsedData = data.map { line => //manage training dataset
+      val parts = line.split('	')
+      //println(parts.length)//根据逗号进行分区
+      for (i <- 1 to parts.length - 1) {
+        abc(i - 1) = parts(i).toDouble
+      }
+      if (abc(0) < 0)
+        abc(0) = 0
+      if (abc(0) > 143)
+        abc(0) = 143
+      res(0) = abc(0) / 143
+
+
+      if (abc(1) < 0)
+        abc(1) = 0
+      if (abc(1) > 30000)
+        abc(1) = 30000;
+      res(1) = abc(1) / 30000
+
+
+
+      if (abc(2) < 0)
+        abc(2) = 0
+      if (abc(2) > 22000)
+        abc(2) = 22000;
+      res(2) = abc(2) / 22000
+
+      if (abc(3) < 0)
+        abc(3) = 0
+      if (abc(3) > 22000)
+        abc(3) = 22000;
+      res(3) = abc(3) / 22000
+
+      if (abc(4) < 0)
+        abc(4) = 0
+      if (abc(4) > 22000)
+        abc(4) = 22000;
+      res(4) = abc(4) / 22000
+
+      if (abc(5) < 0)
+        abc(5) = 0
+      if (abc(5) > 4000)
+        abc(5) = 4000;
+      res(5) = abc(5) / 4000
+
+      if (abc(6) < 0)
+        abc(6) = 0
+      if (abc(6) > 2000)
+        abc(6) = 2000;
+      res(6) = abc(6) / 2000
+
+      if (abc(7) < 0)
+        abc(7) = 0
+      if (abc(7) > 2000)
+        abc(7) = 2000;
+      res(7) = abc(7) / 2000
+
+      if (abc(8) < 0)
+        abc(8) = 0
+      if (abc(8) > 1000)
+        abc(8) = 1000;
+      res(8) = abc(8) / 1000
+
+      if (abc(9) < 0)
+        abc(9) = 0
+      if (abc(9) > 100)
+        abc(9) = 100;
+      res(9) = abc(9) / 100
+
+      if (abc(10) < 0)
+        abc(10) = 0
+      if (abc(10) > 100)
+        abc(10) = 100;
+      res(10) = abc(10) / 100
+
+      if (abc(11) < 0)
+        abc(11) = 0
+      if (abc(11) > 5000)
+        abc(11) = 5000;
+      res(11) = abc(11) / 5000
+
+      if (abc(12) < 0)
+        abc(12) = 0
+      if (abc(12) > 100)
+        abc(12) = 100;
+      res(12) = abc(12) / 100
+
+      if (abc(13) < 0)
+        abc(13) = 0
+      if (abc(13) > 100)
+        abc(13) = 100;
+      res(13) = abc(13) / 100
+
+      if (abc(14) < 0)
+        abc(14) = 0
+      if (abc(14) > 500)
+        abc(14) = 500;
+      res(14) = abc(14) / 500
+
+      if (abc(15) < 0)
+        abc(15) = 0
+      if (abc(15) > 400)
+        abc(15) = 400;
+      res(15) = abc(15) / 400
+
+      if (abc(16) < 0)
+        abc(16) = 0
+      if (abc(16) > 100)
+        abc(16) = 100;
+      res(16) = abc(16) / 100
+
+      if (abc(17) < 0)
+        abc(17) = 0
+      if (abc(17) > 60)
+        abc(17) = 60;
+      res(17) = abc(17) / 60
+
+
+      //println(abc)
+      //println(parts(0))
+      val datas = LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7), res(8), res(9),
+        res(10), res(11), res(12), res(13), res(14), res(15), res(16), res(17)))
+      //println(datas.features)
+      //println(datas.label)
+      LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7), res(8), res(9),
+        res(10), res(11), res(12), res(13), res(14), res(15), res(16), res(17)))
+    }.cache() //转化数据格式
+    //println(parsedData)
+    val model = LassoWithSGD.train(parsedData, 10000, 0.09, 0.0001) //build model
+    //val result = model.predict(Vectors.dense(75.0,1886.0,632.586,1549.615,2211.717,28.513,73.339,26.0,1.0, 0.0,0.0,65.0,0.0,9.0,41.0,	28.0,	1.486,1.486))					//通过模型预测模型
+    var weight2 = model.weights
+    val intercept = model.intercept
+    println("*****" + weight2) //print weights
+    println(intercept)
+
+
+    /** test data set
+      * */
+
+
+    println("*******************************************************")
+    val file=Source.fromFile("/Users/songyatong/Downloads/lassotest.txt")
+      var i:Int = 0
+      for(line<-file.getLines()){
+        i += 1
+        //val data1 = sc.textFile("/Users/songyatong/Downloads/lassotest.txt")
+        //val line = Consle.ReadLine() //manage test dataset
+        val parts = line.split('	')
+        //println(parts.length)//根据逗号进行分区
+        for (i <- 1 to parts.length - 1) {
+          abc1(i - 1) = parts(i).toDouble
+        }
+        var label1: Double = parts(0).toDouble
+        if (abc1(0) < 0)
+          abc1(0) = 0
+        if (abc1(0) > 143)
+          abc1(0) = 143
+        res1(0) = abc1(0) / 143
+
+
+        if (abc1(1) < 0)
+          abc1(1) = 0
+        if (abc1(1) > 30000)
+          abc1(1) = 30000;
+        res1(1) = abc1(1) / 30000
+
+
+
+        if (abc1(2) < 0)
+          abc1(2) = 0
+        if (abc1(2) > 22000)
+          abc1(2) = 22000;
+        res1(2) = abc1(2) / 22000
+
+        if (abc1(3) < 0)
+          abc1(3) = 0
+        if (abc1(3) > 22000)
+          abc1(3) = 22000;
+        res1(3) = abc1(3) / 22000
+
+        if (abc1(4) < 0)
+          abc1(4) = 0
+        if (abc1(4) > 22000)
+          abc1(4) = 22000;
+        res1(4) = abc1(4) / 22000
+
+        if (abc1(5) < 0)
+          abc1(5) = 0
+        if (abc1(5) > 4000)
+          abc1(5) = 4000;
+        res1(5) = abc1(5) / 4000
+
+        if (abc1(6) < 0)
+          abc1(6) = 0
+        if (abc1(6) > 2000)
+          abc1(6) = 2000;
+        res1(6) = abc1(6) / 2000
+
+        if (abc1(7) < 0)
+          abc1(7) = 0
+        if (abc1(7) > 2000)
+          abc1(7) = 2000;
+        res1(7) = abc1(7) / 2000
+
+        if (abc1(8) < 0)
+          abc1(8) = 0
+        if (abc1(8) > 1000)
+          abc1(8) = 1000;
+        res1(8) = abc1(8) / 1000
+
+        if (abc1(9) < 0)
+          abc1(9) = 0
+        if (abc1(9) > 100)
+          abc1(9) = 100;
+        res1(9) = abc1(9) / 100
+
+        if (abc1(10) < 0)
+          abc1(10) = 0
+        if (abc1(10) > 100)
+          abc1(10) = 100;
+        res1(10) = abc1(10) / 100
+
+        if (abc1(11) < 0)
+          abc1(11) = 0
+        if (abc1(11) > 5000)
+          abc1(11) = 5000;
+        res1(11) = abc1(11) / 5000
+
+        if (abc1(12) < 0)
+          abc1(12) = 0
+        if (abc1(12) > 100)
+          abc1(12) = 100;
+        res1(12) = abc1(12) / 100
+
+        if (abc1(13) < 0)
+          abc1(13) = 0
+        if (abc1(13) > 100)
+          abc1(13) = 100;
+        res1(13) = abc1(13) / 100
+
+        if (abc1(14) < 0)
+          abc1(14) = 0
+        if (abc1(14) > 500)
+          abc1(14) = 500;
+        res1(14) = abc1(14) / 500
+
+        if (abc1(15) < 0)
+          abc1(15) = 0
+        if (abc1(15) > 400)
+          abc1(15) = 400;
+        res1(15) = abc1(15) / 400
+
+        if (abc1(16) < 0)
+          abc1(16) = 0
+        if (abc1(16) > 100)
+          abc1(16) = 100;
+        res1(16) = abc1(16) / 100
+
+        if (abc1(17) < 0)
+          abc1(17) = 0
+        if (abc1(17) > 60)
+          abc1(17) = 60;
+        res1(17) = abc1(17) / 60
+
+        //println(abc)
+        //println(parts(0))
+        val result = model.predict(Vectors.dense(res1(0), res1(1), res1(2), res1(3), res1(4), res1(5), res1(6), res1(7), res1(8), res1(9),
+          res1(10), res1(11), res1(12), res1(13), res1(14), res1(15), res1(16), res1(17)))
+        var error: Double = result - label1
+        if(i%100==0) {
+          println("result  " + result)
+          println("label " + label1)
+          println("error:******** " + error)
+        }
+        val datas1 = LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7), res(8), res(9),
+          res(10), res(11), res(12), res(13), res(14), res(15), res(16), res(17)))
+        LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7), res(8), res(9),
+          res(10), res(11), res(12), res(13), res(14), res(15), res(16), res(17)))
+
+    //val model1 = LassoWithSGD.train(parsedData1, 100, 0.003, 0.00001)
+
+    //println(parsedData1)
+    }
+  }
+}
