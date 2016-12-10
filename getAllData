@@ -1,0 +1,182 @@
+__author__ = 'Adam'
+
+'''
+read lati and longi from land
+read from waterdistance and landuse based on lati and longi
+
+'''
+
+import MySQLdb
+from pylab import *
+from osgeo import gdal
+import sys
+from PIL import Image
+import random
+import scipy.stats as st
+
+
+def geoTransform(srcImage):
+    geoTrans = srcImage.GetGeoTransform()
+    ulX = geoTrans[0]
+    ulY = geoTrans[3]
+    xDist = geoTrans[1]
+    yDist = geoTrans[5]
+    band = srcImage.GetRasterBand(1)
+    s = float(ulX)
+    t = float(ulY)
+    print 'Longitude of up left pixel: ', s
+    print 'Latitude of up left pixel: ', t
+    p = float(xDist)
+    q = float(yDist)
+    print 'width of pixel: ', p
+    print 'length of pixel: ', q
+
+
+def readtext(m):
+    values = []
+    filename = "G:\land\%d.txt" % m
+    fr = open(filename, 'r')
+    for k in fr.readlines():
+        value = k.strip()
+        values.append(int(value))
+    return values
+
+
+def feature(value1, value2, value3):
+
+    values1 = []
+    values2 = []
+    values3 = []
+    values4 = []
+    values5 = []
+    values6 = []
+    values7 = []
+    values8 = []
+
+    for zhi in value1:
+        if zhi > 8000:
+            values1.append(1.0)
+        else:
+            zhi /= 8000
+            values1.append('%-8.7f' % zhi)
+    for v in value2:
+        if v == 210:
+            #values2.append('%-7.4f' % random.uniform(2.0, 2.9999))
+            values2.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+
+        elif v == 14:
+            #values2.append('%-7.4f' % random.uniform(1.0, 1.9999))
+            values3.append(1.0)
+            values2.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+        elif v == 20:
+            #values2.append('%-7.4f' % random.uniform(0.75, 0.9999))
+            values4.append(1.0)
+            values3.append(0.0)
+            values2.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+        elif v == 11:
+            #values2.append('%-7.4f' % random.uniform(0.3, 0.7999))
+            values5.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values2.append(0.0)
+            values6.append(0.0)
+            values7.append(0.0)
+        elif v == 140:
+            #values2.append('%-7.4f' % random.uniform(0.2, 0.3499))
+            values6.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values2.append(0.0)
+            values7.append(0.0)
+        else:
+            #values2.append('%-7.4f' % random.uniform(0.0001, 0.1999))
+            values7.append(1.0)
+            values3.append(0.0)
+            values4.append(0.0)
+            values5.append(0.0)
+            values6.append(0.0)
+            values2.append(0.0)
+    for k in value3:
+        k = (k + 1) / 2
+        values8.append('%-8.7f' % k)
+    keys = []
+    keyvalues = []
+    for point in range(0, 7000):
+        keys.append(float(values1[point]))
+        keys.append(float(values2[point]))
+        keys.append(float(values3[point]))
+        keys.append(float(values4[point]))
+        keys.append(float(values5[point]))
+        keys.append(float(values6[point]))
+        keys.append(float(values7[point]))
+        keys.append(float(values8[point]))
+        keyvalues.append(keys)
+        keys = []
+    return keyvalues
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 1:
+        print "[ ERROR ] you must args. the full raster path"
+        sys.exit(1)
+    raster_path = 'C:\Users\Adam\Desktop\land.tif'
+    raster_path1 = 'C:\Users\Adam\Desktop\water.tif'
+    raster_path2 = 'C:\Users\Adam\Desktop\landuse.tif'
+    raster_path3 = 'C:/Users/Adam/Desktop/ndvi07.tif'
+
+    srcImage = gdal.Open(raster_path)
+    srcImage1 = gdal.Open(raster_path1)
+    #srcImage2 = gdal.Open(raster_path2)
+    srcImage3 = gdal.Open(raster_path3)
+
+    band = srcImage.GetRasterBand(1)
+    band1 = srcImage1.GetRasterBand(1)
+   #band2 = srcImage2.GetRasterBand(1)
+    band3 = srcImage3.GetRasterBand(1)
+
+    i = 60
+    j = 43
+    values1 = []
+    values3 = []
+    count = 1
+    while i < 4460:
+        while j < 7143:
+            data = band1.ReadAsArray(j, i, 1, 1)
+            value1 = data[0, 0]
+            values1.append(value1)
+            data = band3.ReadAsArray(j, i, 1, 1)
+            value3 = data[0, 0]
+            values3.append(value3)
+            j += 1
+        values2 = readtext(count)
+        #print count, values1[0:20]
+        #print '     ', values3[0:20]
+        #print '     ', values2[0:20]
+        keys2 = feature(values1, values2, values3)
+        filename = "G:\Features\%d.txt" % count
+        f = open(filename, 'w')
+        for datas in keys2:
+            d = ' '.join([str(data1)for data1 in datas])
+            f.write(d + "\n")
+        f.close()
+        values1 = []
+        values2 = []
+        values3 = []
+        j = 43
+        print count
+        count += 1
+        i += 1
+
