@@ -1,0 +1,66 @@
+__author__ = 'Adam'
+
+
+from pylab import *
+from osgeo import gdal
+import sys
+
+
+class Transformer:
+    def __init__(self, srcImage):
+        self.srcImage = srcImage
+
+    def geoTransform(self):
+        geoTrans = srcImage.GetGeoTransform()
+        ulX = geoTrans[0]
+        ulY = geoTrans[3]
+        xDist = geoTrans[1]
+        yDist = geoTrans[5]
+        band = srcImage.GetRasterBand(1)
+        s = float(ulX)
+        t = float(ulY)
+        print 'Longitude of up left pixel: ', s
+        print 'Latitude of up left pixel: ', t
+        p = float(xDist)
+        q = float(yDist)
+        print 'width of pixel: ', p
+        print 'length of pixel: ', q
+
+        i = 60
+        j = 43
+        xvalues = []
+        yvalues = []
+        while i < 4460:
+            y = t + i*q
+            yvalues.append(y)
+            i += 1
+        while j < 7113:
+            x = s + j*p
+            xvalues.append(x)
+            j += 1
+
+        print xvalues[0:50]
+        print yvalues[0:50]
+        return xvalues, yvalues
+
+
+if __name__ == "__main__":
+    raster_path = 'C:\Users\Adam\Desktop\land.tif'
+    raster_path2 = 'C:\Users\Adam\Desktop\landuse.tif'
+
+    srcImage = gdal.Open(raster_path)
+    srcImage2 = gdal.Open(raster_path2)
+
+    transformer = Transformer(srcImage)
+
+    xrows, yrows = transformer.geoTransform()
+    f = open('demo21.txt', 'w')
+    for i in xrows:
+        #k = ' '.join([str(j)for j in i])
+        f.write(str(i) + "\n")
+    f.close()
+    f = open('demo22.txt', 'w')
+    for i in yrows:
+        #k = ' '.join([str(j)for j in i])
+        f.write(str(i) + "\n")
+    f.close()
