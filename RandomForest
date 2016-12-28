@@ -1,0 +1,188 @@
+package randomforest
+
+import java.awt.Polygon
+
+import com.alibaba.fastjson.{JSON, JSONObject, JSONArray}
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.tree.{DecisionTree, RandomForest}
+import org.apache.spark.mllib.tree.model.DecisionTreeModel
+import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.tree.model.Node
+import org.apache.spark.mllib.tree.DecisionTree
+
+import org.apache.spark.sql.{Row, DataFrame}
+import org.apache.spark.sql.hive.HiveContext
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.mllib.util.MLUtils
+
+import java.util.BitSet
+
+import scala.collection.mutable.ArrayBuffer
+
+/**
+ * Created by machaoyi on 16/6/23.
+ */
+object RandomForestJob {
+  def ModeltoString(topnode: Node) : String = {
+    var leftid = "None"
+    var rightid = "None"
+    var feature = "None"
+    //var featureType = "None"
+    var threshold = "None"
+    if (topnode.isLeaf == false){
+      feature = topnode.split.get.feature.toString
+      threshold = topnode.split.get.threshold.toString
+    }
+    if (topnode.leftNode != None){
+      leftid = topnode.leftNode.get.id.toString
+    }
+    if (topnode.rightNode != None){
+      rightid = topnode.rightNode.get.id.toString
+    }
+
+    var mess : String = topnode.id.toString+","+leftid+","+
+      rightid+","+topnode.isLeaf.toString+","+topnode.predict.predict.toString+
+      ","+feature+","+threshold
+    var leftmess : String = ""
+    var rightmess : String = ""
+    if (topnode.leftNode != None){
+      leftmess = ModeltoString(topnode.leftNode.get)
+    }
+    if (topnode.rightNode != None){
+      rightmess = ModeltoString(topnode.rightNode.get)
+    }
+    var result : String = mess
+    if(!leftmess.equals(""))result+= " "+leftmess
+    if(!rightmess.equals(""))result+= " "+rightmess
+
+    return result
+  }
+  def main(args:Array[String]) = {
+    val sc: SparkContext = new SparkContext(new SparkConf());
+    val hiveContext = new HiveContext(sc)
+    import hiveContext.implicits._
+    val modelfilter = args(0)
+    val testfilter =  args(1)
+    val trainClause = " dt='"+modelfilter+"' "
+    val testClause = " dt='"+testfilter+"' "
+    val traintable = args(2)
+    val testtable = args(3)
+    val data_src =  hiveContext.sql(s"""
+                    select
+                    *
+                    from
+                    $traintable
+                    where $trainClause
+        """.stripMargin)
+    val data_test =  hiveContext.sql(s"""
+                    select
+                    *
+                    from
+                     $testtable
+                    where $testClause
+        """.stripMargin)
+
+    val trainData :RDD[LabeledPoint] = data_src.map(r => (
+    r.getDouble(4), // Get target value
+     // Map feature indices to values
+    r.getInt(1),r.getDouble(2),r.getDouble(5),r.getDouble(6),r.getDouble(7),r.getDouble(8),r.getDouble(11)
+    ,r.getDouble(12),r.getInt(13),r.getDouble(14),r.getDouble(15),r.getDouble(16),r.getDouble(17),r.getDouble(18)
+    ,r.getDouble(19),r.getDouble(20),r.getDouble(21),r.getDouble(22)
+    )).flatMap(
+     l => {
+       var a :String = ""
+       a += l._1+", "+l._2+" "+l._3+" "+l._4+" "+l._5+" "+l._6+" "+l._7+" "+l._8+" "+
+         l._9+" "+l._10+" "+l._11+" "+l._12+" "+l._13+" "+l._14+" "+l._15+" "+l._16+" "+l._17+" "+l._18+" "+l._19
+       var data : LabeledPoint = LabeledPoint.parse(a)
+
+
+       var ret = ArrayBuffer[(LabeledPoint)]()
+       ret += ((data))
+       ret.iterator
+     }
+    )
+
+    val testData  = data_test.map(r => (
+      r.getString(0) , r.getDouble(4), // Get target value
+      // Map feature indices to values
+      r.getInt(1),r.getDouble(2),r.getDouble(5),r.getDouble(6),r.getDouble(7),r.getDouble(8),r.getDouble(11)
+      ,r.getDouble(12),r.getInt(13),r.getDouble(14),r.getDouble(15),r.getDouble(16),r.getDouble(17),r.getDouble(18)
+      ,r.getDouble(19),r.getDouble(20),r.getDouble(21),r.getDouble(22)
+      )).flatMap(
+      l => {
+        var a :String = ""
+        a += l._2+", "+l._3+" "+l._4+" "+l._5+" "+l._6+" "+l._7+" "+l._8+" "+
+          l._9+" "+l._10+" "+l._11+" "+l._12+" "+l._13+" "+l._14+" "+l._15+" "+l._16+" "+l._17+" "+l._18+" "+l._19+" "+l._20
+        var data : LabeledPoint = LabeledPoint.parse(a)
+        val bm_waybill_id = l._1
+
+        var rew = ArrayBuffer[(String,LabeledPoint)]()
+        rew += ((bm_waybill_id,data))
+        rew.iterator
+      }
+    )
+
+
+    val categoricalFeaturesInfo = Map[Int,Int]()
+    val numTrees = args(4).toInt // Use more in practice.
+    val featureSubsetStrategy = "auto" // Let the algorithm choose.
+    val impurity = "variance"
+    val maxDepth = args(5).toInt
+    val maxBins = 32
+
+    var index = 0
+
+
+     val model = RandomForest.trainRegressor(trainData, categoricalFeaturesInfo,
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+
+
+    // Evaluate model on test instances and compute test error
+
+    val modelList : Array[DecisionTreeModel] = model.trees
+
+    var res = ArrayBuffer[(Int,String,String)]()
+
+    for (i <- modelList){
+
+        val message = ModeltoString(i.topNode)
+        res += ((index,message,modelfilter ))
+        index = index + 1
+    }
+
+    val rdd = sc.parallelize(res);
+    // 注册临时表
+    rdd.toDF("id", "model", "dt").registerTempTable("bm_waybill_rf_spark_time")
+
+    // 写入天分区表
+    hiveContext.sql("use mart_peisongpa")
+    hiveContext.sql("set hive.exec.dynamic.partition=true")
+    hiveContext.sql("set hive.exec.dynamic.partition.mode=nostrick")
+
+    hiveContext.sql(
+      """insert overwrite table mart_peisongpa.bm_waybill_rf_spark_time partition(dt)
+        |select id,model,dt from bm_waybill_rf_spark_time distribute by dt""".stripMargin)
+
+    // Evaluate model on test instances and compute test error
+    val TestResult = testData.flatMap(
+       l =>{
+         val bm_waybill_id  = l._1
+         val data = l._2
+         var result = ArrayBuffer[(String,Double,String)]()
+         val deliveredtime = model.predict(data.features)
+         result+=((bm_waybill_id,deliveredtime,testfilter))
+         result.iterator
+       }
+    )
+    TestResult.toDF("bm_waybill_id","deliveredtime","dt").registerTempTable("bm_waybill_rf_spark_time_Mllibtest")
+    // 写入天分区表
+    hiveContext.sql("use mart_peisongpa")
+    hiveContext.sql("set hive.exec.dynamic.partition=true")
+    hiveContext.sql("set hive.exec.dynamic.partition.mode=nostrick")
+
+    hiveContext.sql(
+      """insert overwrite table mart_peisongpa.bm_waybill_rf_spark_time_Mllibtest partition(dt)
+        |select bm_waybill_id,deliveredtime,dt from bm_waybill_rf_spark_time_Mllibtest distribute by dt""".stripMargin)
+  }
+}
