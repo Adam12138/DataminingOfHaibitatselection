@@ -1,0 +1,129 @@
+/**
+  * Created by songyatong on 2016/10/13.
+  */
+package Lasso
+
+import java.awt.Polygon
+import com.alibaba.fastjson.{JSON, JSONObject, JSONArray}
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.regression.{LabeledPoint, LassoWithSGD}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.linalg.{Vector,Vectors}
+import org.apache.spark.sql.{Row, DataFrame}
+import org.apache.spark.sql.hive.HiveContext
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.mllib.util.MLUtils
+import java.util.BitSet
+import scala.collection.mutable.ArrayBuffer
+import org.apache.spark.mllib.regression.LassoModel
+
+/**
+  * Created by song ya tong on 16/10/16.
+  */
+
+object Lasso {
+
+
+  def ModeltoString(w:Vector, lamda:Double) : String = {
+
+    var weights : Vector = w
+    var i = 0;
+    var mass = ""
+    // for 循环把每个特征的权重值依次存储到字符串中，中间以逗号隔开
+    for( i <- 0 to 16){
+      println( "Value of a: " + i );
+      mass.concat(weights(i).toString+",")
+    }
+    mass.concat(weights(17).toString)
+    mass.concat(" ")
+    var lamda1 = lamda.toString
+    mass.concat(lamda1)
+    var result : String = mass
+
+  }
+
+
+  def main(args:Array[String]) = {
+    val sc: SparkContext = new SparkContext(new SparkConf());
+    val hiveContext = new HiveContext(sc)
+    import hiveContext.implicits._
+    val trainClause = " dt='20160928' "
+    val testClause = " dt='20160929' "
+    val data_src =  hiveContext.sql(s"""
+                    select
+                    *
+                    from
+                    mart_peisongpa.zb_delivery_time_data4rf_src
+                    where $trainClause
+        """.stripMargin)
+    val data_test =  hiveContext.sql(s"""
+                    select
+                    *
+                    from
+                    mart_peisongpa.zb_delivery_time_data4rf_test
+                    where $testClause
+        """.stripMargin)
+    var lamda:Double= 0.000001
+
+    val lassomodel  = data_src.map(r => (
+      r.getDouble(4), // Get target value
+      // Map feature indices to values
+      r.getInt(1),r.getDouble(2),r.getDouble(5),r.getDouble(6),r.getDouble(7),r.getDouble(8),r.getDouble(11)
+      ,r.getDouble(12),r.getInt(13),r.getDouble(14),r.getDouble(15),r.getDouble(16),r.getDouble(17),r.getDouble(18)
+      ,r.getDouble(19),r.getDouble(20),r.getDouble(21),r.getDouble(22),r.getString(24)
+      )).flatMap(
+      l => {
+        var a :String = ""
+        a += l._1+", "+l._2+" "+l._3+" "+l._4+" "+l._5+" "+l._6+" "+l._7+" "+l._8+" "+
+          l._9+" "+l._10+" "+l._11+" "+l._12+" "+l._13+" "+l._14+" "+l._15+" "+l._16+" "+l._17+" "+l._18+" "+l._19
+        var data : LabeledPoint = LabeledPoint.parse(a)
+
+
+        var ret = ArrayBuffer[(String,LabeledPoint)]()
+        ret += ((l._20,data))
+        ret.iterator
+      }
+    ).map(r=>((r._1),r._2)).groupByKey().flatMap(
+     k => {
+       val poi_id = k._1
+       val data = k._2
+       var res = ArrayBuffer[(String,LassoModel)]()
+       val model = LassoWithSGD.train(sc.parallelize(data.toArray), 10000,0.0003,lamda)//0.000001
+       res += ((poi_id,model))
+       res.iterator
+     }
+    )
+
+
+
+
+
+    var res = ArrayBuffer[(String,String,String)]()
+    val modelarray = lassomodel.toArray()
+    for (i <- modelarray){
+      var w = i._2.weights
+      val message = ModeltoString(w, lamda)
+      res += ((i._1,message,"20160928"))
+
+    }
+
+
+
+    val rdd = sc.parallelize(res);
+
+    // 注册临时表
+    rdd.toDF( "model", "dt").registerTempTable("bm_waybill_lasso_spark_time")
+
+    // 写入天分区表
+    hiveContext.sql("use mart_peisongpa")
+    hiveContext.sql("set hive.exec.dynamic.partition=true")
+    hiveContext.sql("set hive.exec.dynamic.partition.mode=nostrick")
+    hiveContext.sql(
+      """insert overwrite table mart_peisongpa.bm_waybill_lasso_spark_time partition(dt)
+        |select id,model,dt from bm_waybill_lasso_spark_time distribute by dt""".stripMargin)
+
+
+  }
+}
+
