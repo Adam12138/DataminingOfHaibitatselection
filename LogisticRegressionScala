@@ -1,0 +1,137 @@
+/**
+  * Created by Adam on 2016/12/9.
+  */
+
+import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.mllib.classification.{LogisticRegressionWithSGD,LogisticRegressionWithLBFGS, LogisticRegressionModel}
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.util.MLUtils
+import scala.collection.mutable.ArrayBuffer
+import org.apache.spark.mllib.linalg.{Vector,Vectors}
+import org.apache.spark.mllib.classification.SVMWithSGD
+
+object Logistic {
+  /*def loadDataSet():
+  dataMat = []; labelMat = []
+  fr = open('traindata11.txt')
+  for line in fr.readlines():
+    lineArr = line.strip().split()
+  dataMat.append([1.0, float(lineArr[0]), float(lineArr[1]), float(lineArr[2]), float(lineArr[3]),
+  float(lineArr[4]), float(lineArr[5]), float(lineArr[6]), float(lineArr[7])])
+  #dataMat.append([1.0, float(lineArr[0]), float(lineArr[1])])
+  labelMat.append(int(lineArr[8]))
+  return dataMat, labelMat
+
+
+  def sigmoid(inX):
+  return 1.0/(1+exp(-inX))
+
+
+  def gradAscent(dataMatIn, classLabels):
+    dataMatrix = mat(dataMatIn)             //convert to NumPy matrix
+      labelMat = mat(classLabels).transpose() //convert to NumPy matrix
+      m, n = shape(dataMatrix)
+    //alpha = 0.001
+
+    maxCycles = 50000
+    weights = ones((n, 1))
+    for k in range(maxCycles):              //heavy on matrix operations
+      h = sigmoid(dataMatrix*weights)     //matrix mult
+    #print dataMatrix*weights
+      error = (labelMat - h)              //vector subtraction
+    if k < 20000:
+      alpha = 0.005
+    elif k < 35000:
+    alpha = 0.003
+    else:
+    alpha = 0.001
+    weights = weights + alpha * dataMatrix.transpose()* error //matrix mult
+      print k, weights
+    return weights
+*/
+
+
+  def main(args: Array[String]) {
+    val conf = new SparkConf().setMaster("local").setAppName("Logistic")
+    val sc = new SparkContext(conf)
+    // Load training data in LIBSVM format.
+    //var abc = ArrayBuffer[(Double)]()
+    val res = ArrayBuffer[(Double)]()
+    val data = sc.textFile( "E:/python/habitatuse/train14.txt")
+    //val data = MLUtils.loadLibSVMFile(sc,"E:/python/habitatuse/train14.txt")
+    //val data = sc.textFile( "E:/python/habitatuse/logitest.txt")
+    //print(data)
+    /*val parsedData = data.map { line =>
+      val parts = line.split('|')
+      //print(parts.length)
+      /*
+      for (i <- 1 to (parts.length - 1)) {
+        res.append(parts(i).toDouble)
+      }*/
+
+      //val data = LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7)))
+      //LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7),res(8)))
+      LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).toDouble))
+    }.cache()*/
+
+
+   /* val parsedData = data.map { line =>
+      val parts = line.split('|')
+      //print(parts.length)
+      res.append(1.0)
+      for (i <- 1 to (parts.length - 1)) {
+        res.append(parts(i).toDouble)
+      }
+
+      //val data = LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7)))
+      //LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7),res(8)))
+      LabeledPoint(parts(0).toDouble, Vectors.dense(res(1)))
+    }.cache()*/
+   val parsedData = data.map { line =>
+     val parts = line.split('|')
+     //print(parts.length)
+
+
+     //val data = LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7)))
+     //LabeledPoint(parts(0).toDouble, Vectors.dense(res(0), res(1), res(2), res(3), res(4), res(5), res(6), res(7),res(8)))
+     LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(',').map(_.toDouble)))
+   }.cache()
+
+   // val splits = parsedData.randomSplit(Array(0.7, 0.3), seed = 11L)
+    val splits = parsedData.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val train1 = splits(0)
+    val test = splits(1)
+    //val a:Vector = Vectors.dense(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0)
+    //val lr = new LogisticRegressionWithSGD()
+    //val in = lr.setIntercept(true)
+    //println("***************************"+in+"############")
+    val model = LogisticRegressionWithSGD.train(parsedData,500,0.0003)
+    /*val model1 =new LogisticRegressionWithLBFGS()
+      .setNumClasses(10)
+      .run(train1)*/
+
+    val weight2 = model.weights
+    val intercept = model.intercept
+    //val target = Vectors.dense(2.0)
+    //val result = model.predict(target)
+    //println(result)
+    println("*****" + weight2) //print weights
+    println(intercept)
+    // Compute raw scores on the test set.
+    val predictionAndLabels = test.map { case LabeledPoint(label, features) =>
+      val prediction = model.predict(features)
+      (prediction, label)
+    }
+
+    // Get evaluation metrics.
+    val metrics = new MulticlassMetrics(predictionAndLabels)
+    val precision = metrics.precision
+    println("Precision = " + precision)
+
+    // Save and load model
+    //model.save(sc, "D:/spark/spark-1.6.0-bin-hadoop2.6/data/mllib/")
+    //val sameModel = LogisticRegressionModel.load(sc, "D:/spark/spark-1.6.0-bin-hadoop2.6/data/mllib/")
+  }
+}
